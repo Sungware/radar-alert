@@ -74,10 +74,8 @@
         },
       ];
 
-      const alertSound = new Audio(
-        "https://actions.google.com/sounds/v1/alarms/beep.mp3"
-      );
-      alertSound.volume = 0.5;
+      const alertSound = new Audio("https://sungware.github.io/radar-alert/beep.mp3");
+alertSound.volume = 0.5;
 
       let lastAlertTime = 0;
       const alertCooldown = 15000;
