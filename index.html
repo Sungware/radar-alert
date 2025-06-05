@@ -10028,7 +10028,7 @@ alertSound.volume = 0.5;
           markers.forEach((radar) => {
             const radarLatLng = L.latLng(radar.lat, radar.lng);
             const distance = userLatLng.distanceTo(radarLatLng);
-            if (distance <= 50000) {
+            if (distance <= 500) {
               showAlert(
                 `Dikkat! ${radar.Aciklama} radarına ${Math.round(
                   distance
