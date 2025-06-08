@@ -1,30 +1,48 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Radar Uyarı</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <meta charset="utf-8">
+  <title>Radar Alert</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+  />
   <style>
-    html, body, #map {
-      height: 100%;
-      margin: 0;
+    #map {
+      height: 100vh;
+      width: 100vw;
+    }
+
+    #alert {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: red;
+      color: white;
+      padding: 10px 20px;
+      font-size: 18px;
+      z-index: 9999;
+      border-radius: 8px;
+      display: none;
     }
   </style>
 </head>
 <body>
+  <div id="alert">Radara yaklaşıyorsunuz!</div>
   <div id="map"></div>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
   <script>
-    const map = L.map("map").fitWorld();
+    const map = L.map("map").setView([41.16418, 28.189972], 13);
 
-    const tileLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 18,
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
     }).addTo(map);
 
     const radarPoints = [
- 
+   
             {           
             "Aciklama": '31019 / Laiklik Cad. Büyükkılıçlı SİLİVRİ Büyükkılıçlı-D100 istikametine',
             "lat": '41.16418',
@@ -9946,76 +9964,86 @@
 
 ];
 
-    radarPoints.forEach((point) => {
-      L.circle([point.lat, point.lng], {
-        color: "red",
-        radius: 1000,
-      }).addTo(map);
+    radarPoints.forEach(({ Aciklama, lat, lng }) => {
+      L.marker([parseFloat(lat), parseFloat(lng)]).addTo(map).bindPopup(Aciklama);
     });
 
-    const alertSound = new Audio("https://sungware.github.io/radar-alert/beep.mp3");
-    alertSound.volume = 1.0;
+    let userMarker = null;
+    let audio = new Audio("beep.mp3");
 
-    // Ses çalma fonksiyonu (her seferinde sıfırla ve zorla çal)
-    function playAlertSound() {
-      alertSound.pause();
-      alertSound.currentTime = 0;
-      alertSound.play().catch((e) => {
-        console.warn("Ses çalma başarısız:", e);
+    function showAlert() {
+      const alertDiv = document.getElementById("alert");
+      alertDiv.style.display = "block";
+      setTimeout(() => {
+        alertDiv.style.display = "none";
+      }, 3000);
+    }
+
+    function playBeep() {
+      audio.currentTime = 0;
+      audio.play().catch((e) => {
+        console.log("Ses çalma hatası:", e);
       });
     }
 
-    // Kullanıcı haritaya dokununca ses çalma izni alınsın
-    document.body.addEventListener("click", () => {
-      alertSound.play().then(() => {
-        alertSound.pause();
-        alertSound.currentTime = 0;
-        console.log("Ses izni alındı.");
-      }).catch((e) => {
-        console.warn("Ses izni alınamadı:", e);
-      });
-    }, { once: true });
+    function getDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const φ1 = (lat1 * Math.PI) / 180;
+      const φ2 = (lat2 * Math.PI) / 180;
+      const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+      const Δλ = ((lon2 - lon1) * Math.PI) / 180;
 
-    let userMarker = null;
+      const a =
+        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) *
+        Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-    function onLocationFound(e) {
-      const userLatLng = e.latlng;
+      return R * c;
+    }
 
-      if (userMarker) {
-        map.removeLayer(userMarker);
-      }
-
-      userMarker = L.marker(userLatLng, { title: "Senin Konumun" })
-        .addTo(map)
-        .bindPopup("Buradasın");
-
-      radarPoints.forEach((point) => {
-        const distance = map.distance(userLatLng, L.latLng(point.lat, point.lng));
+    function checkProximity(lat, lng) {
+      radarPoints.forEach(({ lat: rLat, lng: rLng }) => {
+        const distance = getDistance(lat, lng, parseFloat(rLat), parseFloat(rLng));
         if (distance < 1000) {
-          L.popup()
-            .setLatLng(userLatLng)
-            .setContent("📡 Radara yaklaşıyorsunuz!")
-            .openOn(map);
-
-          playAlertSound();
+          showAlert();
+          playBeep();
         }
       });
     }
 
-    function onLocationError(e) {
-      alert("Konum alınamadı: " + e.message);
-    }
+    navigator.geolocation.watchPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
 
-    map.on("locationfound", onLocationFound);
-    map.on("locationerror", onLocationError);
+        if (userMarker) {
+          map.removeLayer(userMarker);
+        }
 
-    // Konumu sürekli izle
-    map.locate({
-      watch: true,
-      setView: true,
-      maxZoom: 16,
-      enableHighAccuracy: true
-    });
+        userMarker = L.circleMarker([lat, lng], {
+          radius: 8,
+          fillColor: "blue",
+          color: "#000",
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.8,
+        }).addTo(map);
+
+        map.setView([lat, lng]);
+
+        checkProximity(lat, lng);
+      },
+      (error) => {
+        console.error("Konum alınamadı:", error);
+        alert("Konum alınamadı: " + error.message);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 1000,
+        timeout: 5000
+      }
+    );
   </script>
 </body>
 </html>
