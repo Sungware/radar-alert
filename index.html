@@ -9991,7 +9991,7 @@
 
       radarPoints.forEach((point) => {
         const distance = map.distance(userLatLng, L.latLng(point.lat, point.lng));
-        if (distance < 10000) {
+        if (distance < 1000) {
           L.popup()
             .setLatLng(userLatLng)
             .setContent("📡 Radara yaklaşıyorsunuz!")
