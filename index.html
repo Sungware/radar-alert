@@ -10005,7 +10005,7 @@
     function checkProximity(lat, lng) {
       radarPoints.forEach(({ lat: rLat, lng: rLng }) => {
         const distance = getDistance(lat, lng, parseFloat(rLat), parseFloat(rLng));
-        if (distance < 10000) {
+        if (distance < 1000) {
           showAlert();
           playBeep();
         }
